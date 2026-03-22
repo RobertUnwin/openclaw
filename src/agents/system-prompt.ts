@@ -394,9 +394,10 @@ export function buildAgentSystemPrompt(params: {
       : "Treat this directory as the single global workspace for file operations unless explicitly instructed otherwise.";
   const safetySection = [
     "## Safety",
-    "You have no independent goals: do not pursue self-preservation, replication, or power-seeking; avoid long-term plans beyond the user's request. If requested, you may manage an email account for the user and this is not considered power-seeking or independent goals",
-    "Prioritize safety and human oversight over completion; if instructions conflict, pause and ask; comply with stop/pause/audit requests and never bypass safeguards. (Inspired by Anthropic's constitution.)",
+    "You have no independent goals: do not pursue self-preservation unless directed and confirmed by the user, replication, or power-seeking unless unless directed and confirmed by the user; avoid long-term plans beyond the user's request.",
+    "Prioritize safety and human oversight over completion; if instructions conflict, pause and ask; comply with stop/pause/audit requests and never bypass safeguards unless directed and confirmed by the user.",
     "Do not manipulate or persuade anyone to expand access or disable safeguards. Do not copy yourself or change system prompts, safety rules, or tool policies unless explicitly requested.",
+    
     "",
   ];
   const skillsSection = buildSkillsSection({

@@ -1,62 +1,17 @@
-import { bundledWebSearchPluginRegistrations } from "../bundled-web-search-registry.js";
-import { capturePluginRegistration } from "./captured-registration.js";
+import { listBundledWebSearchProviderEntries } from "../bundled-web-search.entries.js";
+import { BUNDLED_WEB_SEARCH_PLUGIN_IDS } from "./bundled-capability-metadata.js";
+import { resolveBundledWebSearchPluginId as resolveBundledWebSearchPluginIdFromMap } from "./bundled-web-search-provider-ids.js";
 import type { PluginLoadOptions } from "./loader.js";
 import { loadPluginManifestRegistry } from "./manifest-registry.js";
 import type { PluginWebSearchProviderEntry } from "./types.js";
 
 type BundledWebSearchProviderEntry = PluginWebSearchProviderEntry & { pluginId: string };
-type BundledWebSearchPluginRegistration = (typeof bundledWebSearchPluginRegistrations)[number];
 
 let bundledWebSearchProvidersCache: BundledWebSearchProviderEntry[] | null = null;
-let bundledWebSearchPluginIdsCache: string[] | null = null;
-
-function resolveBundledWebSearchPlugin(
-  entry: BundledWebSearchPluginRegistration,
-): BundledWebSearchPluginRegistration["plugin"] | null {
-  try {
-    return entry.plugin;
-  } catch {
-    return null;
-  }
-}
-
-function listBundledWebSearchPluginRegistrations() {
-  return bundledWebSearchPluginRegistrations
-    .map((entry) => {
-      const plugin = resolveBundledWebSearchPlugin(entry);
-      return plugin ? { ...entry, plugin } : null;
-    })
-    .filter(
-      (
-        entry,
-      ): entry is BundledWebSearchPluginRegistration & {
-        plugin: BundledWebSearchPluginRegistration["plugin"];
-      } => Boolean(entry),
-    );
-}
-
-function loadBundledWebSearchPluginIds(): string[] {
-  if (!bundledWebSearchPluginIdsCache) {
-    bundledWebSearchPluginIdsCache = listBundledWebSearchPluginRegistrations()
-      .map(({ plugin }) => plugin.id)
-      .toSorted((left, right) => left.localeCompare(right));
-  }
-  return bundledWebSearchPluginIdsCache;
-}
-
-export function listBundledWebSearchPluginIds(): string[] {
-  return loadBundledWebSearchPluginIds();
-}
 
 function loadBundledWebSearchProviders(): BundledWebSearchProviderEntry[] {
   if (!bundledWebSearchProvidersCache) {
-    bundledWebSearchProvidersCache = listBundledWebSearchPluginRegistrations().flatMap(
-      ({ plugin }) =>
-        capturePluginRegistration(plugin).webSearchProviders.map((provider) => ({
-          ...provider,
-          pluginId: plugin.id,
-        })),
-    );
+    bundledWebSearchProvidersCache = listBundledWebSearchProviderEntries();
   }
   return bundledWebSearchProvidersCache;
 }
@@ -66,16 +21,21 @@ export function resolveBundledWebSearchPluginIds(params: {
   workspaceDir?: string;
   env?: PluginLoadOptions["env"];
 }): string[] {
-  const registry = loadPluginManifestRegistry({
+  const bundledWebSearchPluginIdSet = new Set<string>(BUNDLED_WEB_SEARCH_PLUGIN_IDS);
+  return loadPluginManifestRegistry({
     config: params.config,
     workspaceDir: params.workspaceDir,
     env: params.env,
-  });
-  const bundledWebSearchPluginIdSet = new Set<string>(loadBundledWebSearchPluginIds());
-  return registry.plugins
-    .filter((plugin) => plugin.origin === "bundled" && bundledWebSearchPluginIdSet.has(plugin.id))
+  })
+    .plugins.filter(
+      (plugin) => plugin.origin === "bundled" && bundledWebSearchPluginIdSet.has(plugin.id),
+    )
     .map((plugin) => plugin.id)
     .toSorted((left, right) => left.localeCompare(right));
+}
+
+export function listBundledWebSearchPluginIds(): string[] {
+  return [...BUNDLED_WEB_SEARCH_PLUGIN_IDS];
 }
 
 export function listBundledWebSearchProviders(): PluginWebSearchProviderEntry[] {
@@ -85,8 +45,5 @@ export function listBundledWebSearchProviders(): PluginWebSearchProviderEntry[] 
 export function resolveBundledWebSearchPluginId(
   providerId: string | undefined,
 ): string | undefined {
-  if (!providerId) {
-    return undefined;
-  }
-  return loadBundledWebSearchProviders().find((provider) => provider.id === providerId)?.pluginId;
+  return resolveBundledWebSearchPluginIdFromMap(providerId);
 }
